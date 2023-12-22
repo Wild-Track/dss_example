@@ -1,67 +1,70 @@
 -- #region Creation of db structure
 -- Create database
-CREATE DATABASE IF NOT EXISTS si CHARACTER
+CREATE DATABASE IF NOT EXISTS insurance_example CHARACTER
 SET
   utf8mb4 COLLATE utf8mb4_unicode_ci;
 
-USE si;
+USE insurance_example;
 
--- Create clients table
-CREATE TABLE
-  clients (
-    `id` INT NOT NULL,
-    `country` VARCHAR(64) NOT NULL,
-    PRIMARY KEY (id)
-  ) CHARACTER
-SET
-  utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE TABLE agencies_revenues(
+  `agency_id` INT NOT NULL,
+  `year_month` TIMESTAMP NOT NULL,
+  `total_income` FLOAT NOT NULL,
+  `expenses` FLOAT NOT NULL,
+  PRIMARY KEY(`agency_id`, `year_month`)
+);
 
--- Create products table
-CREATE TABLE
-  products (
-    `id` INT NOT NULL,
-    `name` VARCHAR(255) NOT NULL,
-    `main_category` VARCHAR(255) NOT NULL,
-    `sub_category` VARCHAR(255) NOT NULL,
-    `image` VARCHAR(255) NOT NULL,
-    `link` VARCHAR(255) NOT NULL,
-    `rating` FLOAT,
-    `nb_rating` INT,
-    `discount_price` FLOAT,
-    `actual_price` FLOAT,
-    PRIMARY KEY (id)
-  ) CHARACTER
-SET
-  utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE TABLE travels(
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `agency_id` INT NOT NULL,
+  `product_id` INT NOT NULL,
+  `claim` VARCHAR(255) NOT NULL,
+  `country_id_of_destination` INT NOT NULL,
+  `net_sales` FLOAT NOT NULL,
+  `commission` FLOAT NOT NULL,
+  `age` INT NOT NULL,
+  `date` TIMESTAMP NOT NULL,
+  PRIMARY KEY(`id`)
+);
 
--- Create sales table
-CREATE TABLE
-  sales (
-    `id` INT NOT NULL,
-    `date` DATETIME NOT NULL,
-    `is_discount` BOOLEAN NOT NULL,
-    `clients_id` INT NOT NULL,
-    PRIMARY KEY (id)
-  ) CHARACTER
-SET
-  utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE TABLE agencies(
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `name` VARCHAR(255) NOT NULL,
+  `type_id` INT NOT NULL,
+  PRIMARY KEY(`id`)
+);
 
--- Create product_details table
-CREATE TABLE
-  product_details (
-    `sales_id` INT NOT NULL,
-    `products_id` INT NOT NULL,
-    `quantity` INT NOT NULL,
-    PRIMARY KEY (`sales_id`, `products_id`)
-  ) CHARACTER
-SET
-  utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE TABLE products(
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `name` VARCHAR(255) NOT NULL,
+  `category_id` INT NOT NULL,
+  PRIMARY KEY(`id`)
+);
 
--- Add foreign key
-ALTER TABLE sales ADD CONSTRAINT clients_sales FOREIGN KEY (`clients_id`) REFERENCES clients (`id`);
+CREATE TABLE categories
+  (`id` INT NOT NULL AUTO_INCREMENT, `name` VARCHAR(255) NOT NULL, PRIMARY KEY(id));
 
-ALTER TABLE product_details ADD CONSTRAINT sales_product_details FOREIGN KEY (`sales_id`) REFERENCES sales (`id`);
+CREATE TABLE agencies_types
+  (`id` INT NOT NULL AUTO_INCREMENT, `name` VARCHAR(255) NOT NULL, PRIMARY KEY(`id`), UNIQUE KEY `agencies_types_name` (`name`));
 
-ALTER TABLE product_details ADD CONSTRAINT products_product_details FOREIGN KEY (`products_id`) REFERENCES products (`id`);
+CREATE TABLE countries(`id` INT NOT NULL AUTO_INCREMENT, `name` VARCHAR(255) NOT NULL, PRIMARY KEY(`id`));
 
--- #endregion Creation of db structure
+ALTER TABLE `agencies`
+  ADD CONSTRAINT id_type_id FOREIGN KEY (`type_id`) REFERENCES `agencies_types` (`id`);
+
+ALTER TABLE `agencies_revenues`
+  ADD CONSTRAINT id_agency_id_agencies_revenues FOREIGN KEY (`agency_id`) REFERENCES `agencies` (`id`);
+
+ALTER TABLE `travels`
+  ADD CONSTRAINT id_agency_id_travels FOREIGN KEY (`agency_id`) REFERENCES `agencies` (`id`);
+
+ALTER TABLE `travels`
+  ADD CONSTRAINT id_destination
+    FOREIGN KEY (`country_id_of_destination`) REFERENCES countries (`id`);
+
+ALTER TABLE `products`
+  ADD CONSTRAINT id_category_id
+    FOREIGN KEY (`category_id`) REFERENCES `categories` (`id`);
+
+ALTER TABLE `travels`
+  ADD CONSTRAINT `id_product_id` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`);

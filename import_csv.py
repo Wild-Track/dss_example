@@ -1,106 +1,84 @@
 import pandas as pd
 import mysql.connector
-import math
-import json
+from datetime import datetime
 
-# region Import Data
-
-# Setup connection to MySQL database
 conn = mysql.connector.connect(
-    host="localhost", port="3306", user="root", password="root", database="si"
+    host="localhost", user="root", password="root", database="insurance_example"
 )
-cursor = conn.cursor()
+cursor = conn.cursor(buffered=True)
 
-# Read CSV files
-clients_df = pd.read_csv("./csv_data/clients.csv")
-sales_df = pd.read_csv("./csv_data/sales.csv")
-products_df = pd.read_csv("./csv_data/data.csv")
+travels_df = pd.read_csv("./csv_data/travel.csv")
+revenues_df = pd.read_csv("./csv_data/agencies_revenues.csv")
 
-# Drop duplicates
-products_df = products_df.drop_duplicates(subset=["name", "main_category", "sub_category", "image", "ratings", "no_of_ratings", "discount_price", "actual_price"])
+product_category_mapping = {}
 
-# Insert data into 'clients' table
-for index, row in clients_df.iterrows():
+for index, row in travels_df.drop_duplicates().iterrows():
     cursor.execute(
-        "INSERT INTO clients (id, country) VALUES (%s, %s)",
-        (int(row["Id"]), row["country"]),
+        "INSERT INTO insurance_example.agencies_types (name) SELECT %s FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM insurance_example.agencies_types WHERE name = %s)",
+        (row['Agency Type'], row['Agency Type'])
     )
-conn.commit()
-
-# Insert data into 'products' table
-for index, row in products_df.iterrows():
-    try:
-        if math.isnan(float(row["discount_price"])):
-            discount_price = None
-    except (ValueError, AttributeError):
-        discount_price = float(row["discount_price"][1:].replace(",", ""))
-
-    try:
-        if math.isnan(float(row["actual_price"])):
-            actual_price = None
-    except (ValueError, AttributeError):
-        actual_price = float(row["actual_price"][1:].replace(",", ""))
-
-    if math.isnan(float(row["ratings"])):
-        ratings = None
-    else:
-        ratings = float(row["ratings"])
-
-    try:
-        if math.isnan(float(row["no_of_ratings"])):
-            no_of_ratings = None
-    except (ValueError, AttributeError):
-        no_of_ratings = int(row["no_of_ratings"].replace(",", ""))
+    cursor.execute("SELECT id FROM agencies_types WHERE name = %s", (row['Agency Type'],))
+    type_id = cursor.fetchone()[0]
 
     cursor.execute(
-        "INSERT INTO products (id, name, main_category, sub_category, image, link, rating, nb_rating, discount_price, actual_price) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
-        (
-            int(row["Id"]),
-            row["name"],
-            row["main_category"],
-            row["sub_category"],
-            row["image"],
-            row["link"],
-            ratings,
-            no_of_ratings,
-            discount_price,
-            actual_price,
-        ),
+        "INSERT INTO insurance_example.agencies (name, type_id) SELECT %s, %s FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM insurance_example.agencies WHERE name = %s AND type_id = %s)",
+        (row['Agency'], type_id, row['Agency'], type_id)
     )
-conn.commit()
+    cursor.execute("SELECT id FROM agencies WHERE name = %s", (row['Agency'],))
+    agency_id = cursor.fetchone()[0]
 
-# Insert data into 'sales' table
-for index, row in sales_df.iterrows():
-    try:
+    cursor.execute(
+        "INSERT INTO insurance_example.categories (name) SELECT %s FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM insurance_example.categories WHERE name = %s)",
+        (row['Product Name'], row['Product Name'])
+    )
+    cursor.execute("SELECT id FROM insurance_example.categories WHERE name = %s", (row['Product Name'],))
+    category_id = cursor.fetchone()[0]
+
+
+    cursor.execute(
+        "INSERT INTO insurance_example.products (name, category_id) SELECT %s, %s FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM insurance_example.products WHERE name = %s AND category_id = %s)",
+        (row['Product Name'], category_id, row['Product Name'], category_id)
+    )
+    cursor.execute("SELECT id FROM products WHERE name = %s", (row['Product Name'],))
+    product_id = cursor.fetchone()[0]
+
+    cursor.execute(
+        "INSERT INTO insurance_example.countries (name) SELECT %s FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM insurance_example.countries WHERE name = %s)",
+        (row['Destination'], row['Destination'])
+    )
+    cursor.execute("SELECT id FROM countries WHERE name = %s", (row['Destination'],))
+    country_id = cursor.fetchone()[0]
+
+    if row['Distribution Channel'] == "Online" and row['Age'] > 18 and row['Age'] < 99 and abs(float(row['Net Sales'])) >= float(row['Commision (in value)']):
         cursor.execute(
-            "INSERT INTO sales (id, date, is_discount, clients_id) VALUES (%s, %s, %s, %s)",
+            "INSERT INTO insurance_example.travels (agency_id, product_id, claim, country_id_of_destination, net_sales, commission, age, date) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
+            (agency_id, product_id, row['Claim'], country_id, abs(float(row['Net Sales'])), float(row['Commision (in value)']), row['Age'], row['Date'])
+        )
+
+conn.commit()
+
+# Insert data into 'agencies' table
+for index, row in revenues_df.drop_duplicates().iterrows():
+    # Get agency_id based on agency name
+    cursor.execute(
+        "SELECT id FROM insurance_example.agencies WHERE name = %s", (row["Agency"],)
+    )
+    agency_id = cursor.fetchone()[0] if cursor.rowcount > 0 else None
+
+    if agency_id is not None:
+        date = datetime.strptime(row["year_month"], "%Y-%m")
+
+        # Insert data into 'agencies_revenues' table
+        cursor.execute(
+            "INSERT INTO insurance_example.agencies_revenues (`agency_id`, `year_month`, `total_income`, `expenses`) VALUES (%s, TIMESTAMP(%s), %s, %s)",
             (
-                int(row["Id"]),
-                row["date"],
-                int(row["is_discounted"]),
-                int(row["client_id"]),
+                agency_id,
+                date,
+                float(row["total_income"]),
+                float(row["expenses"]),
             ),
         )
-    except Exception:
-        pass
 conn.commit()
 
-# Insert data into 'product_details' table
-for index, row in sales_df.iterrows():
-    product_ids = json.loads(row['products'])
-    for product_id in set(product_ids):
-        quantity = product_ids.count(product_id)
-        try:
-            cursor.execute(
-                "INSERT INTO product_details (sales_id, products_id, quantity) VALUES (%s, %s, %s)",
-                (int(row["Id"]), int(product_id), int(quantity)),
-            )
-        except Exception:
-            pass
-conn.commit()
-
-# Close the cursor and connection
 cursor.close()
 conn.close()
-
-# endregion Import Data
