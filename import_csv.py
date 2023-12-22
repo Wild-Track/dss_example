@@ -2,8 +2,6 @@ import pandas as pd
 import mysql.connector
 import math
 import json
-import plotly.express as px
-import plotly.io as pio
 
 # region Import Data
 
