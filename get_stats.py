@@ -60,7 +60,7 @@ fig = px.bar(
 pio.write_image(fig, "./images/top_categories.png")
 # endregion --------------------------------------
 
-# # region age_range_per_destination
+# region age_range_per_destination
 query = "SELECT * FROM age_range_per_destination"
 df = pd.read_sql(query, conn)
 
@@ -111,20 +111,22 @@ fig = px.bar(
 pio.write_image(fig, "./images/income_per_age_range.png")
 # endregion --------------------------------------
 
-# region top_destinations_per_month
-query = "SELECT * FROM top_destinations_per_month"
+# region top_selling_country_per_month
+query = "SELECT * FROM top_selling_country_per_month"
 df = pd.read_sql(query, conn)
 
 fig = px.bar(
     df,
     x="month",
-    y="total_sales",
-    color="destination",
-    title="top_destinations_per_month",
-    labels={"agency": "Agency", "total_turnover": "Total turnover"},
+    y="sales_count",
+    color="country",
+    title="Top Selling Country per Month",
+    labels={"sales_count": "Sales Count", "month": "Month", "country": "Country"},
 )
 
-pio.write_image(fig, "./images/top_destinations_per_month.png")
+fig.update_layout(barmode="stack", legend = dict(font = dict(size = 10, color = "black")))
+
+pio.write_image(fig, "./images/top_selling_country_per_month.png")
 # endregion --------------------------------------
 
 # region top_agencies_profit

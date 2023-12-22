@@ -72,13 +72,16 @@ SELECT
 FROM travels
 GROUP BY age_range;
 
-CREATE VIEW top_destinations_per_month AS
-SELECT 
-    c.name AS destination, 
+CREATE VIEW top_selling_country_per_month AS
+SELECT
+    c.name AS country,
     DATE_FORMAT(t.date, '%Y-%m') AS month,
-    SUM(t.net_sales) AS total_sales
-FROM travels t
-JOIN countries c ON t.country_id_of_destination = c.id
-GROUP BY destination, month
-ORDER BY total_sales DESC
-LIMIT 10;
+    COUNT(*) AS sales_count
+FROM
+    insurance_example.travels t
+JOIN
+    insurance_example.countries c ON t.country_id_of_destination = c.id
+GROUP BY
+    c.name, DATE_FORMAT(t.date, '%Y-%m')
+ORDER BY
+    sales_count DESC;
