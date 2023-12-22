@@ -8,6 +8,12 @@ DJERMOUNI - GERARD - POIRE - LAAOUINE
 
 - Docker
 - Python 3
+  - pandas
+  - mysql.connector
+  - math
+  - json
+  - plotly
+  - sqlalchemy
 
 ## Set up
 
